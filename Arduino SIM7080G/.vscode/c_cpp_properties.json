@@ -28,7 +28,9 @@
                 "C:\\Users\\agbio\\Documents\\Arduino\\libraries\\**",
                 "C:/Users/agbio/Documents/Arduino/libraries/StreamDebugger-master",
                 /* 追記（2021.08.18） */
-                "C:\\Users\\agbio\\Documents\\Arduino\\libraries"
+                "C:\\Users\\agbio\\Documents\\Arduino\\libraries",
+                /* 追記（2021.08.31）オリジナルライブラリを作成したため */
+                "C:\\Users\\agbio\\Documents\\GitHub\\RELEASE\\libraries\\**"
             ],
             "forcedInclude": [
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
