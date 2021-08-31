@@ -247,7 +247,7 @@ class TinyGsmSim7080 : public TinyGsmSim70xx<TinyGsmSim7080>,
     //                  2: CHAP
     //                  3: PAP or CHAP
     if (pwd && strlen(pwd) > 0 && user && strlen(user) > 0) {
-      sendAT(GF("+CNCFG=0,1,\""), apn, "\",\"", user ,"\"", ",\"", pwd, '"',",2");
+      sendAT(GF("+CNCFG=0,1,\""), apn, "\",\"", user ,"\"", ",\"", pwd, '"',",2"); // 正しい構文に修正
       waitResponse();
     } else if (user && strlen(user) > 0) {
       // Set the user name only
