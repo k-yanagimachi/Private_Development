@@ -1,4 +1,6 @@
 /* 定数定義 */
+#ifndef STATUS_FOR_AT_H
+#define STATUS_FOR_AT_H
 #define SerialMon Serial
 #define SerialAT Serial2
 #define DUMP_AT_COMMANDS
@@ -8,8 +10,6 @@
 #define TINY_GSM_USE_GPRS true
 #define TINY_GSM_USE_WIFI false
 #define GSM_PIN "0000"
-#ifndef STATUS_FOR_AT_H
-#define STATUS_FOR_AT_H
 
 /* ライブラリインクルード */
 #include <TinyGsmClient.h>
