@@ -14,23 +14,48 @@
 #endif
 
 /* ライブラリインクルード */
+#include <stdio.h>
 #include <TinyGsmClient.h>
 #include <StreamDebugger.h>
 #include <SoftwareSerial.h>
+#include <time.h>
+#ifdef ORIGINAL_LIB
 #include "StatusForAT.h"
+#include "SSLsetup.h"
+#include "TCPsetup.h"
+#include "MQTTsetup.h"
+#include "NTPsetup.h"
+#endif
 
 /* GSM接続：SIMのAPN,USER_ID,USE_PASS設定 */
 const char apn[]      = "iijmio.jp";
 const char gprsUser[] = "mio@iij";
 const char gprsPass[] = "iij";
 
+// // NTP設定
+// #define TIMEZONE_JST	(const char* )(3600 * 9)	// 日本標準時は、UTC（世界標準時）よりも９時間進んでいる。
+// #define DAYLIGHTOFFSET_JST	(0)		// 日本は、サマータイム（夏時間）はない。
+// #define NTP_SERVER1		"ntp.nict.jpntp.nict.jp"	// NTPサーバー
+// #define NTP_SERVER2		"ntp.jst.mfeed.ad.jp"		// NTPサーバー
+
 /* MQTTTS接続： */
-const char endpoint[] = "a3gr9wct0hnpfa.iot.ap-northeast-1.amazonaws.com";
-const char port[]     = "8883";
-const char rootCA[]   = "ca.pem";
-const char cert[]     = "cert.crt";
-const char key[]      = "private.key";
-const char clientID[] = "SIM7080";
+const char endpoint[]  = "a3gr9wct0hnpfa.iot.ap-northeast-1.amazonaws.com";
+const char ntpserver[] = "ntp.nict.jp";
+const char TCPport[]   = "8883";
+const char UDPport[]   = "123";
+const char rootCA[]    = "ca.pem";
+const char cert[]      = "cert.crt";
+const char key[]       = "private.key";
+const char clientID[]  = "SIM7080";
+
+/* データ取得時間指定 */
+unsigned long before_time = 0;
+unsigned long current_time = 0;
+
+/* MQTT送信間隔 */
+const int between = 60; // 〇sごと
+const int msecond = 1000;
+int count = 0;
 
 #ifndef ORIGINAL_LIB
 /* debug or no-debug */
@@ -41,10 +66,11 @@ TinyGsmClient client(modem);
 #endif
 
 void setup(){
-
+  /* シリアルモニタボーレート設定 */
   SerialMon.begin(9600);
   delay(10);
   
+  /* 「待て、ポチ！」 */
   SerialMon.println("Wait...");
 
   /* モジュールボーレート設定 */
@@ -96,119 +122,108 @@ void setup(){
     SerialMon.println("===== GPRS connected =====");
   }
 
-    /* ATコマンドをターミナルソフト上で可視化する */
+  /* ATコマンドをターミナルソフト上で可視化する */
   modem.sendAT(GF("E1 ")); // ATコマンドEcho on
   modem.waitResponse();
   
 
-/*------------------- 証明書ファイルのダウンロード ここから -------------------*/
-/* AT+CFSINIT                                                               */
-/* OK                                                                       */
-/* AT+CFSWFILE=3,"ca.pem",0,1758,10000                                      */
-/* DOWNLOAD                                                                 */
-/* --->この間にファイルをバイナリで送信する                                    */
-/* OK                                                                       */
-/* AT+CFSWFILE=3,"cert.crt",0,1220,10000                                    */
-/* DOWNLOAD                                                                 */
-/* --->この間にファイルをバイナリで送信する                                    */
-/* OK                                                                       */
-/* AT+CFSWFILE=3,"private.key",0,1675,10000                                 */
-/* DOWNLOAD                                                                 */
-/* --->この間にファイルをバイナリで送信する                                    */
-/* OK                                                                       */
-/*------------------- 証明書ファイルのダウンロード ここまで -------------------*/
+  /*------------------- 証明書ファイルのダウンロード -------------------------------*/
+  /* ※シリアルモニタの通信の速度は9600で設定しないとダウンロードファイルが読み込めない※*/
+  /* AT+CFSINIT                                                                   */
+  /* OK                                                                           */
+  /* AT+CFSWFILE=3,"ca.pem",0,1758,10000                                          */
+  /* DOWNLOAD                                                                     */
+  /* --->この間にファイルをバイナリで送信する                                        */
+  /* OK                                                                           */
+  /* AT+CFSWFILE=3,"cert.crt",0,1220,10000                                        */
+  /* DOWNLOAD                                                                     */
+  /* --->この間にファイルをバイナリで送信する                                        */
+  /* OK                                                                           */
+  /* AT+CFSWFILE=3,"private.key",0,1675,10000                                     */
+  /* DOWNLOAD                                                                     */
+  /* --->この間にファイルをバイナリで送信する                                        */
+  /* OK                                                                           */
+  /*------------------- 証明書ファイルのダウンロード -------------------------------*/
 
-/*------------------- SSLの設定 ここから ----------------------------------------*/
-/* AT+CSSLCFG="SSLVERSION",0,3                                                  */
-/* OK                                                                           */
-/* AT+CSSLCFG="CTXINDEX",0                                                      */
-/* +CSSLCFG: 0,3,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0,1,"" */
-/* OK                                                                           */
-/* AT+CSSLCFG="CONVERT",1,"cert.crt","private.key"                              */
-/* OK                                                                           */
-/* AT+CSSLCFG="CONVERT",2,"ca.pem"                                              */
-/* OK                                                                           */
-/*------------------- SSLの設定 ここまで ----------------------------------------*/
-  modem.sendAT(GF("+CSSLCFG=\"SSLVERSION\",0,3"));
-  modem.waitResponse();
-  modem.sendAT(GF("+CSSLCFG=\"CTXINDEX\",0"));
-  modem.waitResponse();
-  modem.sendAT(GF("+CSSLCFG=\"CONVERT\",1,\""), cert, "\",\"", key, "\"");
-  modem.waitResponse();
-  modem.sendAT(GF("+CSSLCFG=\"CONVERT\",2,\""), rootCA, "\"");
-  modem.waitResponse();
+  /* SSLの設定 */
+  SSL_Setup(cert, key, rootCA);
 
-/*------------------- TCPの設定 ここから ----------------------------------------*/
-/* AT+CACID=0                                                                   */
-/* OK                                                                           */
-/* AT+CASSLCFG=1,"CACERT","ca.pem"                                              */
-/* OK                                                                           */
-/* AT+CASSLCFG=0,"CACERT","ca.pem"                                              */
-/* OK                                                                           */
-/* AT+CASSLCFG=0,"CERT","cart.crt"                                              */
-/* OK                                                                           */
-/* AT+CASSLCFG=0,"CERT","cert.crt"                                              */
-/* OK                                                                           */
-/* AT+CASSLCFG=0,"SSL",1                                                        */
-/* OK                                                                           */
-/* AT+CASSLCFG=0,"CRINDEX",0                                                    */
-/* OK                                                                           */
-/* AT+CAOPEN=0,0,"TCP","a3gr9wct0hnpfa.iot.ap-northeast-1.amazonaws.com",8883   */
-/* +CAOPEN: 0,0                                                                 */
-/* OK                                                                           */
-/* +CASTATE: 0,0                                                                */
-/*------------------- TCPの設定 ここまで ----------------------------------------*/
-  modem.sendAT(GF("+CACID=0"));
-  modem.waitResponse();
-  modem.sendAT(GF("+CASSLCFG=1,\"CACERT\",\""), rootCA, "\"");
-  modem.waitResponse();
-  modem.sendAT(GF("+CASSLCFG=0,\"CERT\",\""), cert, "\"");
-  modem.waitResponse();
-  modem.sendAT(GF("+CASSLCFG=0,\"SSL\",1"));
-  modem.waitResponse();
-  modem.sendAT(GF("+CASSLCFG=0,\"CRINDEX\",0"));
-  modem.waitResponse();
-  modem.sendAT(GF("+CAOPEN=0,0,\"TCP\",\""), endpoint, "\",", port);
-  modem.waitResponse(60000L);
+  /* TCPの設定 */
+  TCP_Setup( rootCA, cert, endpoint, TCPport );
 
-/*------------------- MQTTの設定 ここから ---------------------------------------*/
-/* AT+SMCONF="URL","a3gr9wct0hnpfa.iot.ap-northeast-1.amazonaws.com",8883       */
-/* OK                                                                           */
-/* AT+SMCONF="KEEPTIME",60                                                      */
-/* OK                                                                           */
-/* AT+SMCONF="CLEANSS",1                                                        */
-/* OK                                                                           */
-/* AT+SMCONF="CLIENTID","SIM7080"                                               */
-/* OK                                                                           */
-/* AT+SMSSL=1,"ca.pem","cert.crt"                                               */
-/* OK                                                                           */
-/*------------------- MQTTの設定 ここまで ---------------------------------------*/
+  /* MQTTの設定 */
+  MQTT_Setup( endpoint, TCPport, clientID, rootCA, cert );
 
-  modem.sendAT(GF("+SMCONF=\"URL\",\""), endpoint, "\",", port);
-  modem.waitResponse();
-  modem.sendAT(GF("+SMCONF=\"KEEPTIME\",60"));
-  modem.waitResponse();
-  modem.sendAT(GF("+SMCONF=\"CLEANSS\",1"));
-  modem.waitResponse();
-  modem.sendAT(GF("+SMCONF=\"CLIENTID\",\""), clientID, "\"");
-  modem.waitResponse();
-  modem.sendAT(GF("+SMSSL=1,\""), rootCA, "\",\"", cert, "\"");
-  modem.waitResponse();
+  /* NTPの設定 */
+  NTP_Setup( ntpserver );
+  // SerialMon.println("TIME : ", time);
+
+  /* 時間計測 */
+  before_time = millis();
+
+  // NTP同期
+	// configTzTime( TIMEZONE_JST, DAYLIGHTOFFSET_JST, NTP_SERVER1, NTP_SERVER2 );
 }
+
 
 void loop(){
 
 
-  modem.sendAT(GF("+SMCONN")); // MQTTS OPEN
-  modem.waitResponse(60000L);
+  modem.sendAT("+CNTP");
+  String UTC_time = SerialAT.readStringUntil('\0');
 
-  // modem.sendAT(GF("+SMSUB=1"));
-  // modem.waitResponse();
-  // modem.sendAT(GF("+SMPUB=\"\\SIM7080G\",5,1,1"));
-  // modem.waitResponse();
+  // char* week[8] = {"SUN", "MAN", "TUE", "WED", "THU", "FRI", "SAT",NULL};
+  // time_t t;
+  // struct tm* jstTm; //time構造体
 
-  modem.sendAT(GF("+SMDISC")); // MQTTS CLOSE
-  modem.waitResponse(60000L);
+  // /* JST／日本標準時で出力 */
+  // time(&t); //通算秒の取得
+  // printf("通算秒(t) >> %ld\n", t);
+  // jstTm = localtime(&t); //JST日本標準時を取得
+  // printf("%04d/%02d/%02d(%s) %02d:%02d:%02d 経過日数：%d 夏時間フラグ：%d\n",
+  //   jstTm->tm_year + 1900,
+  //   jstTm->tm_mon + 1,
+  //   jstTm->tm_mday,
+  //   week[jstTm->tm_wday],
+  //   jstTm->tm_hour,
+  //   jstTm->tm_min,
+  //   jstTm->tm_sec,
+  //   jstTm->tm_yday,
+  //   jstTm->tm_isdst );
+
+
+ time_t      timep;
+ struct tm   *time_inf;
+ timep = time(NULL);
+ time_inf = localtime(&timep);
+ SerialMon.println(timep);
+
+
+
+
+
+
+
+
+
+  // SerialMon.print("TIME OF UTC : ");
+  // SerialMon.println(UTC_time);
+
+  // if( ( count % 100 ) == 0 ){
+  //   SerialMon.println(count);
+  // }
+  // count++;
+
+  // modem.sendAT(GF("+SMCONN")); // MQTTS OPEN
+  // modem.waitResponse(60000L);
+
+  // // modem.sendAT(GF("+SMSUB=1"));
+  // // modem.waitResponse();
+  // // modem.sendAT(GF("+SMPUB=\"\\SIM7080G\",5,1,1"));
+  // // modem.waitResponse();
+
+  // modem.sendAT(GF("+SMDISC")); // MQTTS CLOSE
+  // modem.waitResponse(60000L);
 
 
 
@@ -239,14 +254,5 @@ void loop(){
   SerialMon.println(F(" If it doesn't work, select \"Both NL & CR\" in Serial Monitor"));
   SerialMon.println(F("***********************************************************"));
 
-  /* ATコマンド受付 */
-  while(true) {
-    if (SerialAT.available()) {
-      SerialMon.write(SerialAT.read());
-    }
-    if (SerialMon.available()) {
-      SerialAT.write(SerialMon.read());
-    }
-    delay(0);
-  }
+
 }
