@@ -1,5 +1,5 @@
 {
-    "board": "arduino:avr:uno",
+    "sketch": "AWS_MQTTS\\AWS_MQTTS.ino",
     "port": "COM3",
-    "sketch": "AWS_MQTTS\\AWS_MQTTS.ino"
+    "board": "arduino:avr:uno"
 }

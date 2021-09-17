@@ -22,15 +22,15 @@
                 "C:\\program files (x86)\\arduino\\hardware\\tools\\avr\\lib\\gcc\\avr\\7.3.0\\include",
                 "C:\\program files (x86)\\arduino\\hardware\\tools\\avr\\lib\\gcc\\avr\\7.3.0\\include-fixed",
                 "C:\\program files (x86)\\arduino\\hardware\\tools\\avr\\avr\\include",
-                /* 追記（2021.08.04） */
                 "C:\\Program Files (x86)\\Arduino\\**",
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\libraries\\**",
                 "C:\\Users\\agbio\\Documents\\Arduino\\libraries\\**",
                 "C:/Users/agbio/Documents/Arduino/libraries/StreamDebugger-master",
-                /* 追記（2021.08.18） */
-                "C:\\Users\\agbio\\Documents\\Arduino\\libraries",
-                /* 追記（2021.08.31）オリジナルライブラリを作成したため */
-                "C:\\Users\\agbio\\Documents\\GitHub\\RELEASE\\Arduino SIM7080G\\0_libraries\\**"
+                "C:\\Users\\agbio\\Documents\\Arduino\\libraries\\**",
+                "C:/Users/agbio/Documents/Arduino/libraries/BH1750-master/src",
+                "C:\\Users\\agbio\\Documents\\Arduino\\libraries\\TM1637",
+                "C:\\Users\\agbio\\AppData\\Local\\Arduino15\\packages\\esp32\\**",
+                "C:/Program Files (x86)/Arduino/libraries/Ethernet/src"
             ],
             "forcedInclude": [
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
