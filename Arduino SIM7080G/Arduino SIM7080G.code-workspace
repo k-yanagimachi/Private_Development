@@ -6,7 +6,9 @@
 	],
 	"settings": {
 		"files.associations": {
-			"*.tpp": "cpp"
+			"*.tpp": "cpp",
+			"esp32-hal.h": "c",
+			"ctime": "cpp"
 		}
 	}
 }
